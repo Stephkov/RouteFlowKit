@@ -12,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +63,17 @@ internal fun DeveloperShowcaseScreen(onClose: () -> Unit) {
 
     val origin = remember { RouteWaypoint("City Library", GeoCoordinate(32.0808, 34.7806)) }
     val regularDestination = remember { RouteWaypoint("Riverside Gardens", GeoCoordinate(32.1054, 34.8091)) }
+    val normalIcons = remember {
+        RouteFlowIcons(
+            destinationPicker = Icons.Default.Place,
+            routePreview = Icons.Default.Place,
+            activeRide = Icons.Default.Place,
+            arrived = Icons.Default.CheckCircle,
+            startMarkerResourceId = R.drawable.route_marker_start,
+            destinationMarkerResourceId = R.drawable.route_marker_destination,
+            currentLocationMarkerResourceId = R.drawable.route_marker_current,
+        )
+    }
     val regularRoute = remember {
         listOf(
             origin.location,
@@ -138,9 +151,9 @@ internal fun DeveloperShowcaseScreen(onClose: () -> Unit) {
                 ),
                 strings = strings,
                 icons = if (example == RobustnessExample.MissingIcon) {
-                    RouteFlowIcons(routePreview = null)
+                    normalIcons.copy(destinationMarkerResourceId = null)
                 } else {
-                    RouteFlowIcons()
+                    normalIcons
                 },
                 layout = RouteFlowLayout(
                     cardPosition = if (isMessageScenario) {

@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 rootProject.name = "RouteFlowKit"
 include(":app")
 include(":routeflowkit")
+git add .
