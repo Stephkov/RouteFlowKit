@@ -29,7 +29,6 @@ RouteFlowKit is a reusable Jetpack Compose UI library for polished map-based rou
 
 ### JitPack
 
-### JitPack
 
 Add JitPack to `settings.gradle.kts`:
 
@@ -45,7 +44,7 @@ dependencyResolutionManagement {
 Then add
 ```kotlin 
 dependencies {
-implementation("PASTE_THE_EXACT_JITPACK_COORDINATE_HERE")
+implementation('com.github.Stephkov:RouteFlowKit:v1.0.0')
 }
 ```
 ### Local Module
