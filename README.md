@@ -1,102 +1,261 @@
 # RouteFlowKit
 
-An Android library that provides route-flow UI primitives on top of
-Google Maps Compose — **without** exposing Google Maps types in its
-public API.
+RouteFlowKit is a reusable Jetpack Compose UI library for polished map-based route experiences. A host supplies route, location, progress, and product state; RouteFlowKit renders the map, markers, route states, cards, and actions.
 
-> **Week 2 scope:** Public models, sealed UI state, input validation
-> with unit tests, and a Compose demo app.  Navigation, real route
-> calculation, live tracking, address search, and backend integration
-> are **out of scope**.
+> Reusable Android UI components for polished map-based route experiences.
 
----
+## Screenshots
+
+| <img src="screenshots/Screenshot%202026-08-24%20164910.png" alt="Destination selection and map preset configuration" width="240"> | <img src="screenshots/Screenshot%202026-08-24%20164809.png" alt="Route preview with route summary" width="240"> | <img src="screenshots/Screenshot%202026-08-24%20164844.png" alt="Active route with current location and progress" width="240"> |
+
+<p align="center">
+  <strong>Developer Showcase</strong><br>
+  <img src="screenshots/Screenshot%202026-08-24%20164949.png" alt="Developer Showcase with map presets and robustness examples" width="280">
+</p>
+
+## Features
+
+- Full screen map with a host supplied route polyline
+- Start, destination, and optional current-location markers
+- `DestinationSelection`, `RoutePreview`, `ActiveRide`, and `Arrived` modes
+- Host driven route progress with completed and remaining route segments
+- ETA, distance, status, actions, loading, and recovery states
+- `Default`, `Clean`, and `Minimal` map presentation presets
+- Configurable colors, route styling, strings, icons, marker resources, and card layout
+- Defensive validation plus long-text, compact-screen, and RTL support
+- Provider-independent public models; Google Maps types remain internal
+
+## Installation
+
+### JitPack
+
+The project has a local Maven publication configuration, but verified GitHub/JitPack coordinates and a release tag are not finalized. No remote dependency coordinate is documented yet.
+
+### Local Module
+
+Include the library module in `settings.gradle.kts`:
+
+```kotlin
+include(":routeflowkit")
+```
+
+Then add it to the consuming app:
+
+```kotlin
+dependencies {
+    implementation(project(":routeflowkit"))
+}
+```
+
+The consuming app owns the Google Maps API key. For the included demo, place it in the untracked `local.properties` file:
+
+```properties
+MAPS_API_KEY=your_key_here
+```
 
 ## Quick Start
 
-```bash
-# 1. Clone
-git clone <repo-url> && cd RouteFlowKit
+```kotlin
+val origin = RouteWaypoint(
+    label = "Pickup",
+    location = GeoCoordinate(32.0853, 34.7818),
+)
+val destination = RouteWaypoint(
+    label = "Destination",
+    location = GeoCoordinate(32.1093, 34.8255),
+)
+val routeData = RouteFlowData(
+    origin = origin,
+    destination = destination,
+    routeInfo = RouteInfo(
+        polylinePoints = listOf(origin.location, destination.location),
+        distanceMeters = 6_400.0,
+        durationSeconds = 1_020,
+    ),
+)
 
-# 2. Set your Google Maps API key
-echo "MAPS_API_KEY=YOUR_KEY_HERE" >> local.properties
-
-# 3. Build & run tests
-./gradlew assembleDebug :routeflowkit:testDebugUnitTest
+RouteFlowMapScreen(
+    mode = RouteFlowMode.RoutePreview,
+    uiState = RouteFlowUiState.Ready(),
+    presetDestinations = listOf(destination),
+    data = routeData,
+    mapPreset = RouteFlowMapPreset.Clean,
+    onAction = { action -> /* Handle RouteFlowAction in the host. */ },
+)
 ```
 
----
+`RouteFlowMapScreen` also provides an overload with individual `origin`, `destination`, `routeInfo`, `currentLocation`, and `status` parameters.
 
-## Module Structure
+## Usage Examples
 
+### Route Preview
+
+Supply a route and render the preview mode. `ConfirmRoute` is an intent for the host; RouteFlowKit does not perform the transition itself.
+
+```kotlin
+RouteFlowMapScreen(
+    mode = RouteFlowMode.RoutePreview,
+    uiState = RouteFlowUiState.Ready(),
+    presetDestinations = listOf(routeData.destination!!),
+    data = routeData,
+    onAction = { action ->
+        if (action is RouteFlowAction.ConfirmRoute) {
+            // The host changes its state to ActiveRide.
+        }
+    },
+)
 ```
-RouteFlowKit/
-├── app/                  # Demo app (Compose)
-│   └── depends on :routeflowkit
-└── routeflowkit/         # Android library module
-    ├── model/            # GeoCoordinate, RouteWaypoint, RouteInfo
-    ├── state/            # RouteFlowUiState sealed interface
-    ├── validation/       # RouteInputValidator + ValidationResult
-    └── ui/               # RouteFlowMap composable
+
+### Route Progress
+
+The host sends display-ready progress snapshots. RouteFlowKit clamps the fraction for rendering and updates the current marker, route segments, ETA, distance, and status.
+
+```kotlin
+RouteFlowMapScreen(
+    mode = RouteFlowMode.ActiveRide,
+    uiState = RouteFlowUiState.Ready(),
+    presetDestinations = emptyList(),
+    data = routeData,
+    progress = RouteProgress(
+        currentLocation = latestLocation,
+        progressFraction = 0.45f,
+        remainingDistance = "1.7 km",
+        remainingEta = "8 min",
+        status = "On route",
+    ),
+    onAction = { action -> /* Handle RouteFlowAction in the host. */ },
+)
 ```
 
----
+`progressFraction` is a presentation approximation over the supplied polyline. A value of `1f` does not automatically switch the mode to `Arrived`.
 
-## Public Models
+### Map Presentation Presets
 
-| Class | Description |
-|-------|-------------|
-| `GeoCoordinate` | Latitude / longitude pair (no Google Maps dependency) |
-| `RouteWaypoint` | Label + `GeoCoordinate` |
-| `RouteInfo` | Polyline points, distance, duration (stub) |
+```kotlin
+mapPreset = RouteFlowMapPreset.Default
+mapPreset = RouteFlowMapPreset.Clean
+mapPreset = RouteFlowMapPreset.Minimal
+```
 
-Google Maps `LatLng` is used **only internally** via `Mappers.kt`
-(`internal` visibility).
+| Preset | Presentation |
+|---|---|
+| `Default` | Normal map-provider appearance |
+| `Clean` | Light, lower-noise map with useful labels retained |
+| `Minimal` | Light geometry with most labels, POIs, businesses, and transit clutter suppressed |
 
----
+The preset API is provider-independent. Google Maps style objects and JSON remain internal.
 
-## RouteFlowUiState
+### Customization
 
-| Variant | When |
-|---------|------|
-| `Ready` | Map visible and idle; optional origin/destination/route |
-| `Loading` | A route or location request is in progress |
-| `DestinationRequired` | User must supply a destination |
-| `RouteUnavailable` | No route found between origin and destination |
-| `LocationPermissionRequired` | App needs location permission |
-| `LocationServicesDisabled` | Device GPS / network location is off |
-| `Error` | Unrecoverable error with message and optional cause |
+```kotlin
+val routeStyle = RouteFlowStyle.EmeraldCleanLight.copy(
+    primaryColor = Color(0xFF176BEB),
+    routeColor = Color(0xFF176BEB),
+    completedRouteColor = Color(0xFF176BEB),
+)
 
----
+val routeStrings = RouteFlowStrings(
+    routePreviewTitle = "Your route",
+    startRideButton = "Start route",
+    activeRideStatus = "On route",
+)
 
-## Edge-Case Catalogue
+val routeIcons = RouteFlowIcons(
+    activeRide = activeRouteIcon,
+    destinationMarkerResourceId = destinationMarkerDrawable,
+)
+```
 
-Every edge case has an **ID** that appears in the validator source,
-the test file, and this table.
+Pass these values through the `style`, `strings`, and `icons` parameters of `RouteFlowMapScreen`. Null marker resources safely retain the default marker appearance.
 
-| ID | Rule | Implementation | Test |
-|----|------|----------------|------|
-| EC-1 | Latitude must be in [−90, 90] | [RouteInputValidator.kt (`validateCoordinate`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`latitude above 90`, `latitude below -90`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-2 | Longitude must be in [−180, 180] | [RouteInputValidator.kt (`validateCoordinate`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`longitude above 180`, `longitude below -180`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-3 | Latitude / Longitude must not be NaN | [RouteInputValidator.kt (`validateCoordinate`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`NaN latitude`, `NaN longitude`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-4 | Latitude / Longitude must not be ±Infinity | [RouteInputValidator.kt (`validateCoordinate`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`positive infinity latitude`, `negative infinity longitude`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-5 | Waypoint label must not be blank | [RouteInputValidator.kt (`validateWaypoint`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`blank label`, `whitespace-only label`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-6 | Origin and destination must not be identical | [RouteInputValidator.kt (`validateOriginDestination`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`identical origin and destination`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-7 | Waypoint list must contain ≥ 2 points | [RouteInputValidator.kt (`validateWaypointList`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`single-element list`, `empty list`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
-| EC-8 | Waypoint list must not contain duplicate coordinates | [RouteInputValidator.kt (`validateWaypointList`)](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt) | [RouteInputValidatorTest.kt (`duplicate coordinates in list`)](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt) |
+## API Reference
 
----
+| API | Purpose |
+|---|---|
+| `RouteFlowMapScreen` | Primary composable; renders a route mode and UI state from host-supplied data |
+| `RouteFlowData` | Groups origin, destination, route information, current location, and status |
+| `GeoCoordinate` | Provider-independent latitude and longitude |
+| `RouteWaypoint` | Display label plus `GeoCoordinate` |
+| `RouteInfo` | Host-supplied polyline points, distance in meters, and duration in seconds |
+| `RouteProgress` | Current location, progress fraction, remaining distance, remaining ETA, and status |
+| `RouteFlowMode` | `DestinationSelection`, `RoutePreview`, `ActiveRide`, or `Arrived` |
+| `RouteFlowAction` | User intents returned to the host, including select, confirm, cancel, finish, reset, retry, and recovery actions |
+| `RouteFlowStyle` | Colors, route widths, card geometry, spacing, and button/map-control styling |
+| `RouteFlowStrings` | Visible copy, formatting strings, accessibility labels, and recovery messages |
+| `RouteFlowIcons` | Compose card icons and host drawable resource IDs for map markers |
+| `RouteFlowMapPreset` | Provider-independent `Default`, `Clean`, or `Minimal` map presentation |
+
+`RouteFlowUiState` independently represents `Ready`, `Loading`, missing-destination, unavailable-route, permission, location-service, and error states. Optional `enforceValidRoute` validation is disabled by default for backward compatibility.
+
+## Host Responsibilities
+
+The host application owns:
+
+- GPS and location retrieval
+- Route calculation
+- Geographic route-progress calculation
+- ETA calculation
+- Remaining-distance calculation
+- Permission handling
+- Location-services detection
+- Navigation and state transitions
+- Backend and network logic
+
+RouteFlowKit receives the supplied data and state and renders the map UI. It does not retrieve location, calculate a route, perform navigation, or call backend services.
 
 ## Demo App
 
-The `:app` module shows a `DemoScreen` with:
+The `app` module demonstrates one flagship flow:
 
-- A `RouteFlowMap` (Google Map with origin/destination markers) in the
-  **Ready** state.
-- A horizontal chip bar to switch between all 7 `RouteFlowUiState`
-  variants.
+```text
+Destination Selection -> Route Preview -> Active Route -> Arrived
+```
 
----
+It provides three mock destinations, selectable map presets, and app-owned progress snapshots. A secondary Developer Showcase exposes map-preset comparisons and selected robustness scenarios without cluttering the main flow.
+
+## Project Structure
+
+```text
+app/                         demo application and mock host state
+routeflowkit/                reusable Android library
+  src/main/kotlin/.../
+    model/                   provider-independent route data
+    state/                   render states
+    action/                  host-facing user intents
+    style/                   styles, strings, icons, layout, presets
+    validation/              pure input validation
+    ui/                      public composables and internal map rendering
+  src/test/                  JVM validation and rendering-logic tests
+```
+
+## Edge Cases Handled
+
+Edge-case behavior lives in the library. The demo supplies inputs; RouteFlowKit validates or renders the appropriate state.
+
+| Case | Behavior | Implementation | Verification |
+|---|---|---|---|
+| Invalid coordinates: EC-1 latitude, EC-2 longitude, EC-3 NaN, EC-4 infinity | Rejects non-finite and out-of-range coordinates | [validator](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt#L27-L41) | [coordinate tests](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt#L23-L81) |
+| EC-5 blank labels | Rejects blank waypoint labels | [validator](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt#L44-L49) | [waypoint tests](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt#L94-L123) |
+| EC-6 identical origin and destination | Rejects equal endpoints | [validator](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt#L51-L60) | [endpoint test](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt#L137-L142) |
+| EC-7 missing/too-short route, EC-8 duplicate waypoints | Requires at least two unique, valid waypoints | [validator](routeflowkit/src/main/kotlin/com/example/routeflowkit/validation/RouteInputValidator.kt#L63-L81) | [route-list tests](routeflowkit/src/test/kotlin/com/example/routeflowkit/validation/RouteInputValidatorTest.kt#L158-L202) |
+| Defensive invalid polyline handling | Omits empty, single-point, or invalid polylines instead of passing them to the map | [internal mapper](routeflowkit/src/main/kotlin/com/example/routeflowkit/model/Mappers.kt#L13-L22) | [mapper tests](routeflowkit/src/test/kotlin/com/example/routeflowkit/model/RoutePolylineMapperTest.kt#L23-L37) |
+| Missing destination or route | Renders explicit recoverable/blocking message states; opt-in screen validation derives them from supplied input | [screen validation](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowContainer.kt#L185-L226), [message UI](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowMessageCard.kt#L101-L127) | [state model](routeflowkit/src/main/kotlin/com/example/routeflowkit/state/RouteFlowUiState.kt#L21-L32) |
+| Permission, location services, and generic errors | Renders host-supplied message states without requesting permissions or reading GPS | [state model](routeflowkit/src/main/kotlin/com/example/routeflowkit/state/RouteFlowUiState.kt#L34-L44) | [message UI](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowMessageCard.kt#L128-L168) |
+| EC-9 long text | Bounds and scrolls cards; ellipsizes constrained labels | [destination card](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/DestinationPickerCard.kt#L74-L75), [route card](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteBottomCard.kt#L78-L110) | [long-text preview](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowEdgeCasePreviews.kt#L23-L32) |
+| EC-10 missing icon | Uses optional icons and safe fallback visuals | [fallback UI](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/DestinationPickerCard.kt#L86-L101), [icon defaults](routeflowkit/src/main/kotlin/com/example/routeflowkit/style/RouteFlowIcons.kt#L14-L35) | [missing-icon preview](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowEdgeCasePreviews.kt#L34-L44) |
+| EC-11 small screens | Keeps cards height-bounded and vertically scrollable | [route card](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteBottomCard.kt#L69-L80) | [320 dp preview](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowEdgeCasePreviews.kt#L46-L58) |
+| EC-12 RTL/Hebrew | Uses the same components with host layout direction and localized strings | [Hebrew strings](routeflowkit/src/main/kotlin/com/example/routeflowkit/style/RouteFlowStrings.kt#L68-L104) | [RTL preview](routeflowkit/src/main/kotlin/com/example/routeflowkit/ui/RouteFlowEdgeCasePreviews.kt#L60-L71) |
+
+## Requirements
+
+- Minimum SDK 26
+- Compile SDK 36.1
+- Java 11
+- Kotlin 2.1.21 and Android Gradle Plugin 9.2.1
+- Jetpack Compose (Compose BOM 2024.12.01)
+- Maps Compose 6.2.0 and Play Services Maps 19.0.0
+- A Google Maps API key configured by the consuming app
 
 ## License
 
-TBD
+RouteFlowKit is available under the [MIT License](LICENSE).
