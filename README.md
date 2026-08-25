@@ -6,13 +6,12 @@ RouteFlowKit is a reusable Jetpack Compose UI library for polished map-based rou
 
 ## Screenshots
 
-| <img src="screenshots/Screenshot%202026-08-24%20164910.png" alt="Destination selection and map preset configuration" width="240"> | <img src="screenshots/Screenshot%202026-08-24%20164809.png" alt="Route preview with route summary" width="240"> | <img src="screenshots/Screenshot%202026-08-24%20164844.png" alt="Active route with current location and progress" width="240"> |
-
 <p align="center">
-  <strong>Developer Showcase</strong><br>
-  <img src="screenshots/Screenshot%202026-08-24%20164949.png" alt="Developer Showcase with map presets and robustness examples" width="280">
+  <img src="./screenshots/destination-selection.png" alt="Destination Selection" width="240">
+  <img src="./screenshots/route-preview.png" alt="Route Preview" width="240">
+  <img src="./screenshots/active-route.png" alt="Active Route" width="240">
+  <img src="./screenshots/developer-showcase.png" alt="Developer Showcase" width="280">
 </p>
-
 ## Features
 
 - Full screen map with a host supplied route polyline
